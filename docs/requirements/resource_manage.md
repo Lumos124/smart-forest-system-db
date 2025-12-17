@@ -53,19 +53,19 @@
 ## 4. 业务规则与完整性约束 (Business Rules)
 
 1.  **类型互斥约束**：
-    *   若 `resource_type` = 1 (树木)，则 `quantity` 字段建议非空，`coverage_area` 可为空。
-    *   若 `resource_type` = 2 (草地)，则 `coverage_area` 字段建议非空，`quantity` 可为空。
+    *   当 `resource_type` 为 **1 (树木)** 时：字段 `quantity` (数量) 为必填项，而 `coverage_area` (面积) 可为空。
+    *   当 `resource_type` 为 **2 (草地)** 时：字段 `coverage_area` (面积) 为必填项，而 `quantity` (数量) 可为空。
 
 2.  **区域关联性**：
-    *   一个资源记录必须归属于一个有效的区域 (`area_id` 必须存在)。
-    *   删除某个区域前，必须先处理该区域下的所有资源记录（外键约束 `ON DELETE RESTRICT`）。
+    *   任何一条资源记录必须关联一个有效的 `area_id`（必须存在于 Areas 表中）。
+    *   若要删除某个区域，系统应检查该区域下是否存在资源记录。如果存在，则禁止删除（即外键约束策略为 `ON DELETE RESTRICT`）。
 
 3.  **日志不可篡改**：
-    *   `resource_logs` 表仅支持 `INSERT` 和 `SELECT` 操作，严禁 `UPDATE` 或 `DELETE`。
+    *   `resource_logs` 表仅允许执行 `INSERT` (插入) 和 `SELECT` (查询) 操作，严禁执行 `UPDATE` 或 `DELETE`，以确保审计数据的真实性。
 
 4.  **统计口径**：
-    *   树木资源按“数量”进行累加统计。
-    *   草地资源按“面积”进行累加统计。
+    *   **树木资源**：系统将对 `quantity` 字段进行累加统计。
+    *   **草地资源**：系统将对 `coverage_area` 字段进行累加统计
 
 ---
 
