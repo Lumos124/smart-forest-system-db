@@ -4,12 +4,12 @@
 将 E-R 图转换为关系模型，主键加下划线，外键加斜体。
 
 1.  **林草资源 (Resources)**
-    *   模式：( <u>资源编号</u>, *区域编号*, 资源类型, 品种名称, 数量, 面积, 生长状态, 种植时间, 更新时间 )
-    *   简记：Resources ( <u>resource_id</u>, *area_id*, resource_type, variety_name, quantity, coverage_area, growth_stage, plant_time, updated_time )
+    *   模式：( 资源编号(PK), 区域编号(FK), 资源类型, 品种名称, 数量, 面积, 生长状态, 种植时间, 更新时间 )
+    *   简记：Resources ( resource_id(PK), area_id(FK), resource_type, variety_name, quantity, coverage_area, growth_stage, plant_time, updated_time )
 
 2.  **资源变动记录 (ResourceLogs)**
-    *   模式：( <u>变动编号</u>, *资源编号*, 变动类型, 变动原因, *操作人ID*, 变动时间 )
-    *   简记：ResourceLogs ( <u>log_id</u>, *resource_id*, change_type, change_reason, *operator_id*, change_time )
+    *   模式：( 变动编号(PK), 资源编号(FK), 变动类型, 变动原因, 操作人ID(FK), 变动时间 )
+    *   简记：ResourceLogs ( log_id(PK), resource_id(FK), change_type, change_reason, operator_id(FK), change_time )
 
 ## 2. 规范化分析 (第三范式验证)
 
