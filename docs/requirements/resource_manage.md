@@ -52,20 +52,29 @@
 
 ## 4. 业务规则与完整性约束 (Business Rules)
 
-1.  **类型互斥约束**：
-    *   当 `resource_type` 为 **1 (树木)** 时：字段 `quantity` (数量) 为必填项，而 `coverage_area` (面积) 可为空。
-    *   当 `resource_type` 为 **2 (草地)** 时：字段 `coverage_area` (面积) 为必填项，而 `quantity` (数量) 可为空。
+### 4.1 类型互斥约束
+根据资源类型不同，必填字段要求不同：
+*   **情况 A：树木资源**
+    *   条件：**resource_type** = 1
+    *   必填：**quantity** (数量)
+    *   可选：**coverage_area** (面积)
+*   **情况 B：草地资源**
+    *   条件：**resource_type** = 2
+    *   必填：**coverage_area** (面积)
+    *   可选：**quantity** (数量)
 
-2.  **区域关联性**：
-    *   任何一条资源记录必须关联一个有效的 `area_id`（必须存在于 Areas 表中）。
-    *   若要删除某个区域，系统应检查该区域下是否存在资源记录。如果存在，则禁止删除（即外键约束策略为 `ON DELETE RESTRICT`）。
+### 4.2 区域关联性
+*   **有效性检查**：字段 **area_id** 必须对应 Areas 表中存在的记录。
+*   **删除策略**：若 Areas 表中某区域下存在资源记录，则禁止删除该区域（策略：**ON DELETE RESTRICT**）。
 
-3.  **日志不可篡改**：
-    *   `resource_logs` 表仅允许执行 `INSERT` (插入) 和 `SELECT` (查询) 操作，严禁执行 `UPDATE` 或 `DELETE`，以确保审计数据的真实性。
+### 4.3 日志不可篡改
+*   **resource_logs** 表是审计记录，权限控制如下：
+    *   允许：**INSERT**, **SELECT**
+    *   禁止：**UPDATE**, **DELETE**
 
-4.  **统计口径**：
-    *   **树木资源**：系统将对 `quantity` 字段进行累加统计。
-    *   **草地资源**：系统将对 `coverage_area` 字段进行累加统计
+### 4.4 统计口径
+*   **树木统计**：对 **quantity** 字段求和。
+*   **草地统计**：对 **coverage_area** 字段求和。
 
 ---
 
