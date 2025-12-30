@@ -1,5 +1,5 @@
 erDiagram
-    %% 1. 外部依赖实体 (只列出关键字段)
+    %% 1. 外部依赖实体
     sys_area {
         int area_id PK "区域编号"
         string area_name "区域名称"
@@ -45,8 +45,8 @@ erDiagram
     }
 
     %% 3. 实体关系定义
-    sys_area ||--o{ sys_device : "部署 (1:N)"
-    sys_user ||--o{ sys_device : "安装 (1:N)"
-    sys_device ||--o{ sys_device_status : "监测 (1:N)"
-    sys_device ||--o{ sys_maintenance_log : "记录 (1:N)"
-    sys_user ||--o{ sys_maintenance_log : "执行 (1:N)"
+    sys_area ||--o{ sys_device : "部署"
+    sys_user ||--o{ sys_device : "安装"
+    sys_device ||--o{ sys_device_status : "监测"
+    sys_device ||--o{ sys_maintenance_log : "记录"
+    sys_user ||--o{ sys_maintenance_log : "执行"
