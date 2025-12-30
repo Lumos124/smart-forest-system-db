@@ -1,3 +1,4 @@
+```mermaid
 erDiagram
     %% 1. 外部依赖实体
     sys_area {
@@ -50,3 +51,4 @@ erDiagram
     sys_device ||--o{ sys_device_status : "监测"
     sys_device ||--o{ sys_maintenance_log : "记录"
     sys_user ||--o{ sys_maintenance_log : "执行"
+```
