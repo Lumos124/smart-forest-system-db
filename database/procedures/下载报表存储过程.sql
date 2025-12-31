@@ -8,7 +8,7 @@ CREATE PROCEDURE sp_download_report(
     IN p_file_size BIGINT,
     OUT p_result_message VARCHAR(200)
 )
-BEGIN
+proc_label: BEGIN
     DECLARE v_report_exists BOOLEAN DEFAULT FALSE;
     DECLARE v_user_exists BOOLEAN DEFAULT FALSE;
     DECLARE v_access_level ENUM('公开','内部','机密');
@@ -19,10 +19,8 @@ BEGIN
     DECLARE v_can_access BOOLEAN DEFAULT FALSE;
     DECLARE v_has_permission BOOLEAN DEFAULT FALSE;
     
-    -- 开始事务
     START TRANSACTION;
     
-    -- 1. 检查报表是否存在
     SELECT 
         COUNT(*) > 0,
         访问级别,
@@ -42,10 +40,9 @@ BEGIN
     IF NOT v_report_exists THEN
         SET p_result_message = CONCAT('报表不存在或不可用，报表编号：', p_report_id);
         ROLLBACK;
-        LEAVE PROCEDURE;
+        LEAVE proc_label;  -- 改为使用标签退出
     END IF;
     
-    -- 2. 检查用户是否存在且正常
     SELECT 
         COUNT(*) > 0,
         角色编号,
@@ -60,11 +57,9 @@ BEGIN
     IF NOT v_user_exists THEN
         SET p_result_message = '用户不存在或账户异常';
         ROLLBACK;
-        LEAVE PROCEDURE;
+        LEAVE proc_label;  -- 改为使用标签退出
     END IF;
     
-    -- 3. 权限检查
-    -- 公开报表所有人都可以访问
     IF v_access_level = '公开' THEN
         SET v_can_access = TRUE;
     -- 内部报表：系统管理员、数据管理员、区域护林员、监管人员
@@ -83,10 +78,9 @@ BEGIN
     IF NOT v_can_access THEN
         SET p_result_message = '没有权限下载该报表';
         ROLLBACK;
-        LEAVE PROCEDURE;
+        LEAVE proc_label;  -- 改为使用标签退出
     END IF;
     
-    -- 4. 检查是否有下载权限
     SELECT COUNT(*) > 0 INTO v_has_permission
     FROM 角色权限关联表 rp
     JOIN 权限 p ON rp.权限编号 = p.权限编号
@@ -96,16 +90,12 @@ BEGIN
     IF NOT v_has_permission THEN
         SET p_result_message = '用户没有下载报表的权限';
         ROLLBACK;
-        LEAVE PROCEDURE;
+        LEAVE proc_label;  -- 改为使用标签退出
     END IF;
     
-    -- 5. 记录下载日志
     INSERT INTO 下载日志 (用户ID, 报表编号, 下载文件大小)
     VALUES (p_user_id, p_report_id, p_file_size);
     
-    -- 6. 更新报表下载次数（由触发器自动完成）
-    
-    -- 7. 记录操作日志
     INSERT INTO 操作日志 (用户ID, 操作类型, 目标表, 目标ID, 操作结果, 操作详情)
     VALUES (p_user_id, 'DOWNLOAD_REPORT', '生成报表', p_report_id, '成功',
             JSON_OBJECT('report_id', p_report_id, 'report_name', v_report_name, 
@@ -113,7 +103,6 @@ BEGIN
     
     SET p_result_message = CONCAT('报表下载记录成功，报表：', v_report_name);
     
-    -- 提交事务
     COMMIT;
     
 END$$
