@@ -11,6 +11,7 @@ CREATE PROCEDURE sp_generate_report(
     OUT p_report_id INT UNSIGNED,
     OUT p_result_message VARCHAR(200)
 )
+
 proc_main: BEGIN
     DECLARE v_template_exists BOOLEAN DEFAULT FALSE;
     DECLARE v_template_active BOOLEAN DEFAULT FALSE;
@@ -19,79 +20,76 @@ proc_main: BEGIN
     DECLARE v_has_permission BOOLEAN DEFAULT FALSE;
     DECLARE v_report_exists BOOLEAN DEFAULT FALSE;
     DECLARE v_report_name VARCHAR(100);
-    DECLARE v_need_approve BOOLEAN DEFAULT FALSE;
     
     START TRANSACTION;
-    
-    SELECT 
+
+    SELECT
         COUNT(*) > 0,
         是否生效,
         审核状态 = '通过',
-        报表名称,
-        是否需要审核
-    INTO 
+        报表名称
+    INTO
         v_template_exists,
         v_template_active,
         v_template_approved,
-        v_report_name,
-        v_need_approve
-    FROM 报表模板 
+        v_report_name
+    FROM 报表模板
     WHERE 模板编号 = p_template_id;
-    
+
     IF NOT v_template_exists THEN
-        SET p_result_message = CONCAT('Template not found, ID: ', p_template_id);
+        SET p_result_message = CONCAT('模板不存在，ID：', p_template_id);
         SET p_report_id = 0;
         ROLLBACK;
         LEAVE proc_main;
     END IF;
-    
+
     IF NOT v_template_active THEN
-        SET p_result_message = CONCAT('Template is not active, ID: ', p_template_id);
+        SET p_result_message = CONCAT('模板未启用，ID：', p_template_id);
         SET p_report_id = 0;
         ROLLBACK;
         LEAVE proc_main;
     END IF;
-    
-    IF v_need_approve AND NOT v_template_approved THEN
-        SET p_result_message = CONCAT('Template requires approval, ID: ', p_template_id);
+
+    IF NOT v_template_approved THEN
+        SET p_result_message = CONCAT('模板未审核通过，ID：', p_template_id);
         SET p_report_id = 0;
         ROLLBACK;
         LEAVE proc_main;
     END IF;
-    
+
     SELECT 角色编号 INTO v_role_id FROM 用户 WHERE 用户编号 = p_generator_id AND 状态 = '正常';
-    
+
     IF v_role_id IS NULL THEN
-        SET p_result_message = 'User not found or disabled';
+        SET p_result_message = '用户不存在或已禁用';
         SET p_report_id = 0;
         ROLLBACK;
         LEAVE proc_main;
     END IF;
-    
+
     SELECT COUNT(*) > 0 INTO v_has_permission
     FROM 角色权限关联表 rp
     JOIN 权限 p ON rp.权限编号 = p.权限编号
     WHERE rp.角色编号 = v_role_id
-      AND p.权限代码 = 'REPORT_GENERATE';
-    
+    AND p.权限代码 = 'REPORT_GENERATE';
+
     IF NOT v_has_permission THEN
-        SET p_result_message = 'No permission to generate reports';
+        SET p_result_message = '没有生成报表的权限';
         SET p_report_id = 0;
         ROLLBACK;
         LEAVE proc_main;
     END IF;
-    
+
     SELECT COUNT(*) > 0 INTO v_report_exists
-    FROM 生成报表 
+    FROM 生成报表
     WHERE 模板编号 = p_template_id AND 统计周期 = p_stat_period;
-    
+
     IF v_report_exists THEN
-        SET p_result_message = CONCAT('Report already exists for period "', p_stat_period, '"');
+        SET p_result_message = CONCAT('该周期报表已存在，周期：', p_stat_period);
         SET p_report_id = 0;
         ROLLBACK;
         LEAVE proc_main;
     END IF;
-    
+
     INSERT INTO 生成报表 (
         模板编号, 统计周期, 报表文件存储路径, 数据来源说明,
         生成人ID, 文件大小, 访问级别
@@ -99,22 +97,21 @@ proc_main: BEGIN
         p_template_id, p_stat_period, p_file_path, p_data_source_desc,
         p_generator_id, p_file_size, p_access_level
     );
-    
+
     SET p_report_id = LAST_INSERT_ID();
-    
-    UPDATE 报表模板 
-    SET 最后使用时间 = NOW() 
+
+    UPDATE 报表模板
+    SET 最后使用时间 = NOW()
     WHERE 模板编号 = p_template_id;
-    
+
     INSERT INTO 操作日志 (用户ID, 操作类型, 目标表, 目标ID, 操作结果, 操作详情)
     VALUES (p_generator_id, 'GENERATE_REPORT', '生成报表', p_report_id, '成功',
-            JSON_OBJECT('template_id', p_template_id, 'stat_period', p_stat_period, 
-                       'template_name', v_report_name));
-    
-    SET p_result_message = CONCAT('Report generated successfully, ID: ', p_report_id);
-    
+        JSON_OBJECT('template_id', p_template_id, 'stat_period', p_stat_period,
+                    'template_name', v_report_name));
+
+    SET p_result_message = CONCAT('报表生成成功，编号：', p_report_id);
+
     COMMIT;
-    
 END$$
 
 DELIMITER ;
