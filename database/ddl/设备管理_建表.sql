@@ -48,4 +48,5 @@ CREATE TABLE sys_maintenance_log (
     post_status ENUM('正常', '故障', '离线') COMMENT '维护后状态',
     FOREIGN KEY (device_id) REFERENCES sys_device(device_id),
     FOREIGN KEY (maint_person_id) REFERENCES sys_user(user_id)
+
 ) COMMENT='设备维护记录表';
