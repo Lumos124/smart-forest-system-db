@@ -12,7 +12,6 @@ proc_main: BEGIN
     DECLARE v_admin_role INT UNSIGNED;
     DECLARE v_current_status ENUM('待审核','通过','驳回');
     DECLARE v_template_name VARCHAR(100);
-    DECLARE v_need_approve BOOLEAN;
     
     START TRANSACTION;
     
@@ -33,16 +32,16 @@ proc_main: BEGIN
         LEAVE proc_main;
     END IF;
     
-    -- 修复：使用 EXISTS 检查模板是否存在
+    -- 检查模板是否存在且处于待审核状态
     SELECT EXISTS (
         SELECT 1
         FROM 报表模板
         WHERE 模板编号 = p_template_id
-          AND 是否需要审核 = TRUE
+          AND 审核状态 = '待审核'
     ) INTO v_template_exists;
     
     IF NOT v_template_exists THEN
-        SET p_result_message = CONCAT('模板不存在或不需要审核，模板编号：', p_template_id);
+        SET p_result_message = CONCAT('模板不存在或无需审核，模板编号：', p_template_id);
         ROLLBACK;
         LEAVE proc_main;
     END IF;
@@ -50,12 +49,10 @@ proc_main: BEGIN
     -- 获取模板详细信息
     SELECT 
         审核状态,
-        报表名称,
-        是否需要审核
+        报表名称
     INTO 
         v_current_status,
-        v_template_name,
-        v_need_approve
+        v_template_name
     FROM 报表模板
     WHERE 模板编号 = p_template_id;
     
@@ -67,7 +64,8 @@ proc_main: BEGIN
     
     -- 更新模板状态
     UPDATE 报表模板
-    SET 审核状态 = p_approve_action
+    SET 审核状态 = p_approve_action,
+        是否生效 = IF(p_approve_action = '通过', TRUE, FALSE)
     WHERE 模板编号 = p_template_id;
     
     -- 记录操作日志
