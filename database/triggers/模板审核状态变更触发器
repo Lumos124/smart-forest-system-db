@@ -1,11 +1,20 @@
 DELIMITER $$
+DROP TRIGGER IF EXISTS tr_template_approved;
 CREATE TRIGGER tr_template_approved
 AFTER UPDATE ON 报表模板
 FOR EACH ROW
 BEGIN
     IF OLD.审核状态 != '通过' AND NEW.审核状态 = '通过' THEN
-        INSERT INTO 通知记录 (接收人ID, 通知内容, 通知方式)
-        VALUES (OLD.创建人ID, CONCAT('模板 "', OLD.报表名称, '" 审核通过'), '系统消息');
+        -- 只记录操作日志，不发送通知
+        INSERT INTO 操作日志 (用户ID, 操作类型, 目标表, 目标ID, 操作详情, 操作结果)
+        VALUES (
+            NEW.创建人ID,  -- 这里假设审核人是模板创建人，实际情况可能需要调整
+            'TEMPLATE_APPROVED',
+            '报表模板',
+            NEW.模板编号,
+            CONCAT('模板 "', NEW.报表名称, '" 审核通过'),
+            '成功'
+        );
     END IF;
 END $$
 DELIMITER ;
