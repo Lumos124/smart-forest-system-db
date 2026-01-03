@@ -1,21 +1,21 @@
-CREATE OR REPLACE VIEW v_资源变动审计 AS
+CREATE OR REPLACE VIEW `v_资源变动审计` AS
 SELECT 
-    c.log_id,
-    r.variety AS 资源名称,
-    a.area_name AS 所属区域,
-    c.change_type AS 动作,
-    c.reason AS 详情,
-    c.change_time,
+    c.`变动编号`,
+    r.`品种名称` AS 资源名称,
+    a.`区域名称` AS 所属区域,
+    c.`变动类型` AS 动作,
+    c.`变动原因` AS 详情,
+    c.`变动时间`,
     -- 核心：对比操作人和负责人
-    op_user.username AS 实际操作人,
-    mgr_user.username AS 归属负责人,
+    op_user.`用户名` AS 实际操作人,
+    mgr_user.`用户名` AS 归属负责人,
     CASE 
-        WHEN c.operator_id = a.manager_id THEN '正常履职'
-        WHEN op_user.role = '系统管理员' THEN '行政干预'
+        WHEN c.`操作人ID` = a.`负责人ID` THEN '正常履职'
+        WHEN op_user.`角色` = '系统管理员' THEN '行政干预'
         ELSE '⚠️ 越权/代操作' 
     END AS 审计结论
-FROM ChangeLog c
-JOIN Resource r ON c.resource_id = r.resource_id
-JOIN Area a ON r.area_id = a.area_id
-JOIN User op_user ON c.operator_id = op_user.user_id
-JOIN User mgr_user ON a.manager_id = mgr_user.user_id;
+FROM `资源变动记录` c
+JOIN `林草资源` r ON c.`资源编号` = r.`资源编号`
+JOIN `区域` a ON r.`区域编号` = a.`区域编号`
+JOIN `用户` op_user ON c.`操作人ID` = op_user.`用户ID`
+JOIN `用户` mgr_user ON a.`负责人ID` = mgr_user.`用户ID`;

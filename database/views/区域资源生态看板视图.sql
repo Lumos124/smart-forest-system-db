@@ -1,17 +1,17 @@
-CREATE OR REPLACE VIEW v_区域生态概览 AS
+CREATE OR REPLACE VIEW `v_区域生态概览` AS
 SELECT 
-    a.area_name AS 区域名称,
-    a.area_type AS 规划类型,
-    u.username AS 负责人,
-    COUNT(r.resource_id) AS 资源种类数,
+    a.`区域名称`,
+    a.`区域类型` AS 规划类型,
+    u.`用户名` AS 负责人,
+    COUNT(r.`资源编号`) AS 资源种类数,
     -- 统计树木和草地的分布
-    SUM(CASE WHEN r.res_type = '树木' THEN r.amount ELSE 0 END) AS 树木保有量,
-    SUM(CASE WHEN r.res_type = '草地' THEN r.amount ELSE 0 END) AS 草地面积,
-    -- 统计生态结构（计算幼苗占比，评估未来潜力）
+    SUM(CASE WHEN r.`资源类型` = '树木' THEN r.`数量或面积` ELSE 0 END) AS 树木保有量,
+    SUM(CASE WHEN r.`资源类型` = '草地' THEN r.`数量或面积` ELSE 0 END) AS 草地面积,
+    -- 统计生态结构
     CONCAT(ROUND(
-        SUM(CASE WHEN r.growth_stage = '幼苗' THEN 1 ELSE 0 END) * 100.0 / NULLIF(COUNT(r.resource_id), 0), 
+        SUM(CASE WHEN r.`生长状态` = '幼苗' THEN 1 ELSE 0 END) * 100.0 / NULLIF(COUNT(r.`资源编号`), 0), 
     2), '%') AS 幼苗占比
-FROM Area a
-LEFT JOIN User u ON a.manager_id = u.user_id
-LEFT JOIN Resource r ON a.area_id = r.area_id
-GROUP BY a.area_id, a.area_name, u.username;
+FROM `区域` a
+LEFT JOIN `用户` u ON a.`负责人ID` = u.`用户ID`
+LEFT JOIN `林草资源` r ON a.`区域编号` = r.`区域编号`
+GROUP BY a.`区域编号`, a.`区域名称`, u.`用户名`;
