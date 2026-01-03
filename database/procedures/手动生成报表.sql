@@ -1,7 +1,5 @@
 DELIMITER $$
 
-DROP PROCEDURE IF EXISTS sp_generate_reporte$$
-
 CREATE PROCEDURE sp_generate_report(
     IN p_template_id INT UNSIGNED,
     IN p_stat_period VARCHAR(20),
