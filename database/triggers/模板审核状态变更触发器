@@ -1,0 +1,11 @@
+DELIMITER $$
+CREATE TRIGGER tr_template_approved
+AFTER UPDATE ON 报表模板
+FOR EACH ROW
+BEGIN
+    IF OLD.审核状态 != '通过' AND NEW.审核状态 = '通过' THEN
+        INSERT INTO 通知记录 (接收人ID, 通知内容, 通知方式)
+        VALUES (OLD.创建人ID, CONCAT('模板 "', OLD.报表名称, '" 审核通过'), '系统消息');
+    END IF;
+END $$
+DELIMITER ;
