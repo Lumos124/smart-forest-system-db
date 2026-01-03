@@ -69,7 +69,7 @@ proc_main: BEGIN
         p_indicator,
         p_cycle_type,
         p_data_source,
-        TRUE,      -- 默认生效
+        FALSE,      -- 默认不生效
         '待审核',  -- 所有模板都需要审核
         p_creator_id
     );
