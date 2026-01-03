@@ -1,6 +1,6 @@
 DELIMITER $$
 
-DROP PROCEDURE IF EXISTS sp_create_template$$
+DROP PROCEDURE IF EXISTS sp_generate_reporte$$
 
 CREATE PROCEDURE sp_generate_report(
     IN p_template_id INT UNSIGNED,
