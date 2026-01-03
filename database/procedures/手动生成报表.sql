@@ -15,30 +15,34 @@ CREATE PROCEDURE sp_generate_report(
 )
 
 proc_main: BEGIN
-    DECLARE v_template_exists BOOLEAN DEFAULT FALSE;
+    DECLARE v_template_exists INT DEFAULT 0;
     DECLARE v_template_active BOOLEAN DEFAULT FALSE;
     DECLARE v_template_approved BOOLEAN DEFAULT FALSE;
     DECLARE v_role_id INT UNSIGNED;
-    DECLARE v_has_permission BOOLEAN DEFAULT FALSE;
-    DECLARE v_report_exists BOOLEAN DEFAULT FALSE;
+    DECLARE v_has_permission INT DEFAULT 0;
+    DECLARE v_report_exists INT DEFAULT 0;
     DECLARE v_report_name VARCHAR(100);
     
     START TRANSACTION;
 
-    SELECT
-        COUNT(*) > 0,
+    -- 直接查询，不使用COUNT(*)>0
+    SELECT 
         是否生效,
         审核状态 = '通过',
         报表名称
-    INTO
-        v_template_exists,
+    INTO 
         v_template_active,
         v_template_approved,
         v_report_name
     FROM 报表模板
     WHERE 模板编号 = p_template_id;
 
-    IF NOT v_template_exists THEN
+    -- 检查模板是否存在
+    SELECT COUNT(*) INTO v_template_exists
+    FROM 报表模板
+    WHERE 模板编号 = p_template_id;
+
+    IF v_template_exists = 0 THEN
         SET p_result_message = CONCAT('模板不存在，ID：', p_template_id);
         SET p_report_id = 0;
         ROLLBACK;
@@ -68,11 +72,14 @@ proc_main: BEGIN
         LEAVE proc_main;
     END IF;
 
-    SELECT COUNT(*) > 0 INTO v_has_permission
-    FROM 角色权限关联表 rp
-    JOIN 权限 p ON rp.权限编号 = p.权限编号
-    WHERE rp.角色编号 = v_role_id
-    AND p.权限代码 = 'REPORT_GENERATE';
+    -- 使用子查询避免GROUP BY问题
+    SELECT EXISTS (
+        SELECT 1
+        FROM 角色权限关联表 rp
+        JOIN 权限 p ON rp.权限编号 = p.权限编号
+        WHERE rp.角色编号 = v_role_id
+        AND p.权限代码 = 'REPORT_GENERATE'
+    ) INTO v_has_permission;
 
     IF NOT v_has_permission THEN
         SET p_result_message = '没有生成报表的权限';
@@ -81,11 +88,11 @@ proc_main: BEGIN
         LEAVE proc_main;
     END IF;
 
-    SELECT COUNT(*) > 0 INTO v_report_exists
+    SELECT COUNT(*) INTO v_report_exists
     FROM 生成报表
     WHERE 模板编号 = p_template_id AND 统计周期 = p_stat_period;
 
-    IF v_report_exists THEN
+    IF v_report_exists > 0 THEN
         SET p_result_message = CONCAT('该周期报表已存在，周期：', p_stat_period);
         SET p_report_id = 0;
         ROLLBACK;
