@@ -1,0 +1,94 @@
+-- 存储过程：自动处理公众反馈状态变更并记录日志
+DELIMITER $$
+
+CREATE PROCEDURE 更新公众反馈状态(
+    IN p_反馈编号 INT UNSIGNED,
+    IN p_处理状态 ENUM('待处理', '处理中', '已处理'),
+    IN p_处理人编号 INT UNSIGNED,
+    IN p_处理结果 TEXT,
+    IN p_操作人编号 INT UNSIGNED
+)
+BEGIN
+    DECLARE v_提交人编号 INT UNSIGNED;
+    DECLARE v_反馈类型 VARCHAR(20);
+    DECLARE v_发现地点 VARCHAR(200);
+    DECLARE v_原处理状态 VARCHAR(20);
+    
+    -- 获取原始信息
+    SELECT 提交人编号, 反馈类型, 发现地点, 处理状态
+    INTO v_提交人编号, v_反馈类型, v_发现地点, v_原处理状态
+    FROM 公众反馈
+    WHERE 反馈编号 = p_反馈编号;
+    
+    -- 更新反馈状态
+    UPDATE 公众反馈
+    SET 
+        处理状态 = p_处理状态,
+        处理人编号 = p_处理人编号,
+        处理结果 = p_处理结果,
+        处理时间 = NOW()
+    WHERE 反馈编号 = p_反馈编号;
+    
+    -- 记录操作日志
+    INSERT INTO 操作日志 (
+        用户编号,
+        操作类型,
+        目标表,
+        目标ID,
+        操作结果,
+        操作详情
+    ) VALUES (
+        p_操作人编号,
+        'UPDATE_FEEDBACK_STATUS',
+        '公众反馈',
+        p_反馈编号,
+        '成功',
+        JSON_OBJECT(
+            '原状态', v_原处理状态,
+            '新状态', p_处理状态,
+            '反馈类型', v_反馈类型,
+            '发现地点', LEFT(v_发现地点, 50),
+            '处理人编号', p_处理人编号,
+            '操作类型', '更新反馈状态'
+        )
+    );
+    
+    -- 如果是"已处理"状态，自动生成系统消息通知提交人
+    IF p_处理状态 = '已处理' THEN
+        -- 这里可以插入到系统消息表，如果需要的话
+        -- 示例：插入到通知记录表（如果需要系统消息功能）
+        -- INSERT INTO 通知记录 (预警编号, 接收人编号, 通知方式, 发送时间, 接收状态)
+        -- VALUES (NULL, v_提交人编号, '系统消息', NOW(), '已发送');
+        
+        -- 记录通知日志
+        INSERT INTO 操作日志 (
+            用户编号,
+            操作类型,
+            目标表,
+            目标ID,
+            操作结果,
+            操作详情
+        ) VALUES (
+            p_操作人编号,
+            'NOTIFY_FEEDBACK_RESULT',
+            '公众反馈',
+            p_反馈编号,
+            '成功',
+            JSON_OBJECT(
+                '反馈编号', p_反馈编号,
+                '接收人编号', v_提交人编号,
+                '处理结果', LEFT(p_处理结果, 100),
+                '通知类型', '处理结果通知'
+            )
+        );
+    END IF;
+    
+    -- 返回更新结果
+    SELECT 
+        'success' as 状态,
+        CONCAT('反馈编号 ', p_反馈编号, ' 的状态已更新为: ', p_处理状态) as 消息,
+        p_反馈编号 as 反馈编号,
+        p_处理状态 as 新状态;
+END$$
+
+DELIMITER ;
