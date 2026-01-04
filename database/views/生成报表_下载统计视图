@@ -1,17 +1,23 @@
 CREATE OR REPLACE VIEW 生成报表_下载统计视图 AS
 SELECT 
     r.报表编号,
-    ANY_VALUE(r.报表文件存储路径) AS 报表文件存储路径,
-    ANY_VALUE(r.生成时间) AS 生成时间,
-    ANY_VALUE(r.下载次数) AS 下载次数,
-    COUNT(d.日志编号) AS 实际下载次数,
-    ANY_VALUE(u.真实姓名) AS 生成人姓名,
-    ANY_VALUE(r.访问级别) AS 访问级别,
-    ANY_VALUE(r.报表状态) AS 报表状态,
-    ANY_VALUE(r.文件大小) AS 文件大小,
-    ANY_VALUE(r.统计周期) AS 统计周期
+    r.报表文件存储路径,
+    r.生成时间,
+    r.下载次数 AS 系统记录下载次数,
+    COUNT(DISTINCT d.日志编号) AS 实际下载记录数,  
+    COUNT(DISTINCT d.用户编号) AS 下载用户数,      
+    u.真实姓名 AS 生成人姓名,
+    r.访问级别,
+    r.报表状态,
+    r.文件大小,
+    r.统计周期,
+    t.报表名称,                             
+    t.模板编号                               
 FROM 生成报表 r
 LEFT JOIN 下载日志 d ON r.报表编号 = d.报表编号
 JOIN 用户 u ON r.生成人编号 = u.用户编号
-GROUP BY r.报表编号
-ORDER BY 下载次数 DESC;
+JOIN 报表模板 t ON r.模板编号 = t.模板编号  -- 新增关联
+GROUP BY r.报表编号, r.报表文件存储路径, r.生成时间, 
+         u.真实姓名, r.访问级别, r.报表状态, 
+         r.文件大小, r.统计周期, t.报表名称, t.模板编号
+ORDER BY r.下载次数 DESC;
