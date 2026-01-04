@@ -1,12 +1,12 @@
--- 触发器：设备状态自动同步 (trg_sync_device_status)
 DELIMITER //
-CREATE TRIGGER trg_sync_device_status
-AFTER INSERT ON sys_device_status
+DROP TRIGGER IF EXISTS `trg_状态自动同步` //
+CREATE TRIGGER `trg_状态自动同步`
+AFTER INSERT ON `设备状态`
 FOR EACH ROW
 BEGIN
-    -- 故障同步逻辑
-    IF NEW.run_status = '故障' THEN
-        UPDATE sys_device SET status = '故障' WHERE device_id = NEW.device_id;
+    -- 当监测到故障时，自动更新主档案状态
+    IF NEW.`运行状态` = '故障' THEN
+        UPDATE `设备档案` SET `状态` = '故障' WHERE `设备编号` = NEW.`设备编号`;
     END IF;
 END;
 //
