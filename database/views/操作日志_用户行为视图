@@ -1,0 +1,14 @@
+CREATE OR REPLACE VIEW 操作日志_用户行为视图 AS
+SELECT 
+    o.日志编号,
+    o.操作类型,
+    o.目标表,
+    o.目标ID,
+    o.操作时间,
+    o.操作结果,
+    o.错误信息,
+    u.真实姓名 AS 操作人姓名,
+    u.角色编号
+FROM 操作日志 o
+JOIN 用户 u ON o.用户编号 = u.用户编号
+ORDER BY o.操作时间 DESC;
