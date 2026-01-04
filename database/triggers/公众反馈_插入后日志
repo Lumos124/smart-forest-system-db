@@ -1,0 +1,56 @@
+-- 触发器：当插入新的公众反馈时自动记录日志
+DELIMITER $$
+
+CREATE TRIGGER 公众反馈_插入后日志
+AFTER INSERT ON 公众反馈
+FOR EACH ROW
+BEGIN
+    -- 记录反馈提交日志
+    INSERT INTO 操作日志 (
+        用户编号,
+        操作类型,
+        目标表,
+        目标ID,
+        操作结果,
+        操作详情
+    ) VALUES (
+        NEW.提交人编号,
+        'SUBMIT_FEEDBACK',
+        '公众反馈',
+        NEW.反馈编号,
+        '成功',
+        JSON_OBJECT(
+            '反馈类型', NEW.反馈类型,
+            '发现地点', LEFT(NEW.发现地点, 50),
+            '处理状态', NEW.处理状态,
+            '提交时间', NEW.提交时间
+        )
+    );
+    
+    -- 如果是紧急反馈类型，可以自动发送通知给管理员
+    IF NEW.反馈类型 IN ('火情', '非法砍伐') THEN
+        -- 查找系统管理员或相关责任人
+        INSERT INTO 操作日志 (
+            用户编号,
+            操作类型,
+            目标表,
+            目标ID,
+            操作结果,
+            操作详情
+        ) VALUES (
+            NEW.提交人编号,
+            'URGENT_FEEDBACK_ALERT',
+            '公众反馈',
+            NEW.反馈编号,
+            '成功',
+            JSON_OBJECT(
+                '反馈编号', NEW.反馈编号,
+                '反馈类型', NEW.反馈类型,
+                '紧急程度', '高',
+                '自动通知', '已触发'
+            )
+        );
+    END IF;
+END$$
+
+DELIMITER ;
