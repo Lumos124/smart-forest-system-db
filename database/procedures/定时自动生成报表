@@ -1,0 +1,83 @@
+DELIMITER $$
+
+CREATE PROCEDURE sp_auto_generate_reports()
+BEGIN
+    DECLARE done INT DEFAULT 0;
+    DECLARE v_template_id INT;
+    DECLARE v_report_name VARCHAR(100);
+    DECIMRE v_generation_cycle ENUM('日', '周', '月', '季', '年');
+    DECLARE v_creator_id INT;
+    DECLARE v_stat_period VARCHAR(20);
+    DECLARE v_current_date DATE;
+    
+    -- 获取当前日期
+    SET v_current_date = CURDATE();
+    
+    -- 获取所有已生效的模板
+    DECLARE cur_templates CURSOR FOR
+        SELECT 模板编号, 报表名称, 生成周期, 创建人编号
+        FROM 报表模板
+        WHERE 是否生效 = TRUE 
+          AND 审核状态 = '通过';
+    
+    DECLARE CONTINUE HANDLER FOR NOT FOUND SET done = 1;
+    
+    OPEN cur_templates;
+    
+    read_loop: LOOP
+        FETCH cur_templates INTO v_template_id, v_report_name, v_generation_cycle, v_creator_id;
+        IF done THEN
+            LEAVE read_loop;
+        END IF;
+        
+        -- 根据生成周期确定统计周期
+        CASE v_generation_cycle
+            WHEN '日' THEN
+                SET v_stat_period = DATE_FORMAT(v_current_date, '%Y-%m-%d');
+            WHEN '周' THEN
+                SET v_stat_period = CONCAT(YEAR(v_current_date), '-W', LPAD(WEEK(v_current_date), 2, '0'));
+            WHEN '月' THEN
+                SET v_stat_period = DATE_FORMAT(v_current_date, '%Y-%m');
+            WHEN '季' THEN
+                SET v_stat_period = CONCAT(YEAR(v_current_date), '-Q', QUARTER(v_current_date));
+            WHEN '年' THEN
+                SET v_stat_period = YEAR(v_current_date);
+        END CASE;
+        
+        -- 检查该周期是否已生成过报表
+        IF NOT EXISTS (
+            SELECT 1 FROM 生成报表 
+            WHERE 模板编号 = v_template_id 
+              AND 统计周期 = v_stat_period
+        ) THEN
+            -- 插入生成报表记录
+            INSERT INTO 生成报表 (
+                模板编号, 统计周期, 报表文件存储路径, 
+                报表状态, 数据来源说明, 下载次数,
+                生成时间, 生成人编号, 访问级别
+            ) VALUES (
+                v_template_id, v_stat_period, 
+                CONCAT('/reports/', v_template_id, '_', REPLACE(v_stat_period, ':', '_'), '.pdf'),
+                '已生成', 
+                CONCAT('系统自动生成，数据来源：', 
+                    (SELECT 数据来源 FROM 报表模板 WHERE 模板编号 = v_template_id)), 
+                0,
+                NOW(), v_creator_id, '内部'
+            );
+            
+            -- 记录操作日志
+            INSERT INTO 操作日志 (
+                用户编号, 操作类型, 目标表, 目标ID,
+                操作结果, 操作详情
+            ) VALUES (
+                v_creator_id, 'AUTO_GENERATE_REPORT', '生成报表',
+                LAST_INSERT_ID(), '成功',
+                CONCAT('系统自动生成报表，模板：', v_report_name, '，周期：', v_stat_period)
+            );
+        END IF;
+    END LOOP;
+    
+    CLOSE cur_templates;
+END$$
+
+DELIMITER ;
