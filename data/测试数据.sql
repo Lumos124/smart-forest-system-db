@@ -1,3 +1,4 @@
+-- 1. 插入设备档案
 INSERT INTO sys_device (device_name, device_type, model_spec, purchase_time, warranty_period, status, area_id, installer_id) VALUES 
 ('1号红外相机', '摄像头', 'HK-2024', '2024-01-01', 24, '正常', 1, 1),
 ('2号土壤传感器', '传感器', 'TR-01', '2024-01-02', 12, '正常', 1, 2),
@@ -20,7 +21,7 @@ INSERT INTO sys_device (device_name, device_type, model_spec, purchase_time, war
 ('19号空气传感器', '传感器', 'Air-Mini', '2024-10-10', 12, '故障', 3, 3),
 ('20号边界报警器', '预警器', 'Bound-A', '2024-11-01', 36, '正常', 4, 4);
 
--- 状态表和维护记录表的数据
+-- 2. 插入设备状态
 INSERT INTO sys_device_status (device_id, collect_time, run_status, battery_level, signal_strength) VALUES
 (1, NOW(), '正常', 90, 85), (2, NOW(), '正常', 88, 92), (3, NOW(), '正常', 95, 80),
 (4, NOW(), '正常', 85, 88), (5, NOW(), '正常', 80, 90), (6, NOW(), '故障', 0, 0),
@@ -30,6 +31,7 @@ INSERT INTO sys_device_status (device_id, collect_time, run_status, battery_leve
 (16, NOW(), '正常', 65, 75), (17, NOW(), '正常', 100, 100), (18, NOW(), '正常', 88, 86),
 (19, NOW(), '故障', 5, 10), (20, NOW(), '正常', 96, 94);
 
+-- 3. 插入维护记录 
 INSERT INTO sys_maintenance_log (device_id, maint_type, maint_time, maint_person_id, maint_content, maint_result, pre_status, post_status) VALUES
 (6, '维修', '2024-12-01 10:00:00', 1, '更换电池', '电池损坏需返厂', '故障', '故障'),
 (10, '巡检', '2024-12-02 11:30:00', 2, '检查网络连接', '模块松动', '离线', '正常'),
