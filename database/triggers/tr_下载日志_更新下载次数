@@ -1,0 +1,12 @@
+DELIMITER //
+
+CREATE TRIGGER tr_下载日志_更新下载次数
+AFTER INSERT ON 下载日志
+FOR EACH ROW
+BEGIN
+    UPDATE 生成报表 
+    SET 下载次数 = 下载次数 + 1
+    WHERE 报表编号 = NEW.报表编号;
+END //
+
+DELIMITER ;
