@@ -1,5 +1,5 @@
--- 1. 插入设备档案
-INSERT INTO sys_device (device_name, device_type, model_spec, purchase_time, warranty_period, status, area_id, installer_id) VALUES 
+-- 1. 插入设备档案 (已移除安装时间)
+INSERT INTO `设备档案` (`设备名称`, `设备类型`, `型号规格`, `采购时间`, `质保期`, `状态`, `区域编号`, `安装人ID`) VALUES 
 ('1号红外相机', '摄像头', 'HK-2024', '2024-01-01', 24, '正常', 1, 1),
 ('2号土壤传感器', '传感器', 'TR-01', '2024-01-02', 12, '正常', 1, 2),
 ('3号烟雾预警器', '预警器', 'SM-X', '2024-02-01', 36, '正常', 2, 1),
@@ -22,7 +22,7 @@ INSERT INTO sys_device (device_name, device_type, model_spec, purchase_time, war
 ('20号边界报警器', '预警器', 'Bound-A', '2024-11-01', 36, '正常', 4, 4);
 
 -- 2. 插入设备状态
-INSERT INTO sys_device_status (device_id, collect_time, run_status, battery_level, signal_strength) VALUES
+INSERT INTO `设备状态` (`设备编号`, `采集时间`, `运行状态`, `电池电量`, `信号强度`) VALUES
 (1, NOW(), '正常', 90, 85), (2, NOW(), '正常', 88, 92), (3, NOW(), '正常', 95, 80),
 (4, NOW(), '正常', 85, 88), (5, NOW(), '正常', 80, 90), (6, NOW(), '故障', 0, 0),
 (7, NOW(), '正常', 75, 70), (8, NOW(), '正常', 98, 95), (9, NOW(), '正常', 60, 80),
@@ -31,8 +31,8 @@ INSERT INTO sys_device_status (device_id, collect_time, run_status, battery_leve
 (16, NOW(), '正常', 65, 75), (17, NOW(), '正常', 100, 100), (18, NOW(), '正常', 88, 86),
 (19, NOW(), '故障', 5, 10), (20, NOW(), '正常', 96, 94);
 
--- 3. 插入维护记录 
-INSERT INTO sys_maintenance_log (device_id, maint_type, maint_time, maint_person_id, maint_content, maint_result, pre_status, post_status) VALUES
+-- 3. 插入维护记录
+INSERT INTO `维护记录` (`设备编号`, `维护类型`, `维护时间`, `维护人ID`, `维护内容`, `维护结果`, `维护前状态`, `维护后状态`) VALUES
 (6, '维修', '2024-12-01 10:00:00', 1, '更换电池', '电池损坏需返厂', '故障', '故障'),
 (10, '巡检', '2024-12-02 11:30:00', 2, '检查网络连接', '模块松动', '离线', '正常'),
 (19, '更换', '2024-12-03 09:15:00', 3, '传感器老化更换', '更换完毕', '故障', '正常'),
