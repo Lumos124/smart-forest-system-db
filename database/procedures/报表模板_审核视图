@@ -1,0 +1,16 @@
+CREATE OR REPLACE VIEW 报表模板_审核视图 AS
+SELECT 
+    t.模板编号,
+    t.报表名称,
+    t.统计维度,
+    t.统计指标,
+    t.生成周期,
+    t.数据来源,
+    t.审核状态,
+    t.创建时间,
+    u.真实姓名 AS 创建人姓名,
+    u.邮箱 AS 创建人邮箱
+FROM 报表模板 t
+JOIN 用户 u ON t.创建人编号 = u.用户编号
+WHERE t.审核状态 = '待审核'
+ORDER BY t.创建时间 DESC;
