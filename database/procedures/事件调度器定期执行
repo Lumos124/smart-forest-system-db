@@ -1,26 +1,26 @@
--- 创建每日凌晨1点执行的事件
-CREATE EVENT IF NOT EXISTS event_auto_generate_daily_reports
+-- 删除原有事件
+DROP EVENT IF EXISTS event_auto_generate_daily_reports;
+DROP EVENT IF EXISTS event_auto_generate_weekly_reports;
+DROP EVENT IF EXISTS event_auto_generate_monthly_reports;
+
+-- 创建测试事件（每分钟执行一次，便于调试）
+CREATE EVENT IF NOT EXISTS event_test_auto_generate
+ON SCHEDULE
+    EVERY 1 MINUTE
+    STARTS NOW()
+DO
+    CALL sp_auto_generate_reports();
+
+-- 或者创建正式的事件（每日执行）
+CREATE EVENT IF NOT EXISTS event_auto_generate_daily
 ON SCHEDULE
     EVERY 1 DAY
     STARTS CONCAT(CURRENT_DATE, ' 01:00:00')
 DO
     CALL sp_auto_generate_reports();
 
--- 创建每周一凌晨2点执行的事件（用于周报）
-CREATE EVENT IF NOT EXISTS event_auto_generate_weekly_reports
-ON SCHEDULE
-    EVERY 1 WEEK
-    STARTS CONCAT(DATE_ADD(CURRENT_DATE, INTERVAL (8 - DAYOFWEEK(CURRENT_DATE)) DAY), ' 02:00:00')
-DO
-    CALL sp_auto_generate_reports();
-
--- 创建每月1日凌晨3点执行的事件（用于月报）
-CREATE EVENT IF NOT EXISTS event_auto_generate_monthly_reports
-ON SCHEDULE
-    EVERY 1 MONTH
-    STARTS CONCAT(DATE_ADD(LAST_DAY(CURRENT_DATE), INTERVAL 1 DAY), ' 03:00:00')
-DO
-    CALL sp_auto_generate_reports();
-
 -- 启用事件调度器
 SET GLOBAL event_scheduler = ON;
+
+-- 查看事件状态
+SHOW EVENTS;
