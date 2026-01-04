@@ -1,0 +1,40 @@
+-- 存储过程：获取公众反馈统计信息（供监管人员使用）
+DELIMITER $$
+
+CREATE PROCEDURE 获取公众反馈统计(
+    IN p_开始日期 DATE,
+    IN p_结束日期 DATE,
+    IN p_反馈类型 VARCHAR(20)
+)
+BEGIN
+    -- 统计各类型反馈数量
+    SELECT 
+        反馈类型,
+        COUNT(*) as 总数量,
+        SUM(CASE WHEN 处理状态 = '待处理' THEN 1 ELSE 0 END) as 待处理数量,
+        SUM(CASE WHEN 处理状态 = '处理中' THEN 1 ELSE 0 END) as 处理中数量,
+        SUM(CASE WHEN 处理状态 = '已处理' THEN 1 ELSE 0 END) as 已处理数量,
+        ROUND(100.0 * SUM(CASE WHEN 处理状态 = '已处理' THEN 1 ELSE 0 END) / COUNT(*), 2) as 处理完成率,
+        AVG(TIMESTAMPDIFF(HOUR, 提交时间, 处理时间)) as 平均处理时长_小时
+    FROM 公众反馈
+    WHERE 
+        提交时间 >= p_开始日期 
+        AND 提交时间 <= DATE_ADD(p_结束日期, INTERVAL 1 DAY)
+        AND (p_反馈类型 IS NULL OR 反馈类型 = p_反馈类型)
+    GROUP BY 反馈类型
+    ORDER BY 总数量 DESC;
+    
+    -- 统计近期的反馈趋势（按天）
+    SELECT 
+        DATE(提交时间) as 提交日期,
+        反馈类型,
+        COUNT(*) as 当日数量
+    FROM 公众反馈
+    WHERE 
+        提交时间 >= DATE_SUB(NOW(), INTERVAL 30 DAY)
+        AND (p_反馈类型 IS NULL OR 反馈类型 = p_反馈类型)
+    GROUP BY DATE(提交时间), 反馈类型
+    ORDER BY 提交日期 DESC, 反馈类型;
+END$$
+
+DELIMITER ;
