@@ -1,67 +1,112 @@
--- 查看数据管理员生成的报表及其模板信息（关联3个表）
+-- 查询北部森林保护区近7天的火灾预警记录及其处理情况
 SELECT 
-    u.真实姓名 as 生成人,
-    u.角色编号,
-    rt.报表名称 as 模板名称,
-    rt.统计维度,
-    rt.生成周期 as 模板周期,
-    COUNT(gr.报表编号) as 生成报表数量,
-    SUM(gr.下载次数) as 总下载次数,
-    MAX(gr.生成时间) as 最近生成时间
-FROM 用户 u
-JOIN 生成报表 gr ON u.用户编号 = gr.生成人ID
-JOIN 报表模板 rt ON gr.模板编号 = rt.模板编号
-WHERE u.角色编号 = (SELECT 角色编号 FROM 角色 WHERE 角色名称 = '数据管理员')
-  AND gr.生成时间 >= DATE_SUB(NOW(), INTERVAL 90 DAY)
-GROUP BY u.用户编号, u.真实姓名, u.角色编号, rt.模板编号, rt.报表名称, rt.统计维度, rt.生成周期
-ORDER BY 生成报表数量 DESC;
+    w.预警编号,
+    w.触发时间,
+    w.预警内容,
+    w.处理状态,
+    u.真实姓名 AS 处理人姓名,
+    w.处理结果,
+    w.解决时间,
+    r.区域名称,
+    wr.预警类型
+FROM 
+    预警记录 w
+    JOIN 区域 r ON w.涉及区域编号 = r.区域编号
+    JOIN 预警规则 wr ON w.触发规则编号 = wr.规则编号
+    LEFT JOIN 用户 u ON w.处理人编号 = u.用户编号
+WHERE 
+    r.区域名称 = '北部森林保护区'
+    AND wr.预警类型 = '火灾'
+    AND w.触发时间 >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)
+ORDER BY 
+    w.触发时间 DESC;
 
--- 分析报表下载热度与用户活跃度（关联4个表）
+-- 统计各区域设备故障次数及维护次数
 SELECT 
-    u.用户编号,
-    u.真实姓名,
-    r.角色名称,
-    COUNT(DISTINCT dl.日志编号) as 下载次数,
-    COUNT(DISTINCT dl.报表编号) as 下载报表种类,
-    SUM(dl.下载文件大小) / 1024 / 1024 as 总下载大小_MB,
-    AVG(gr.文件大小) / 1024 / 1024 as 平均报表大小_MB,
-    MAX(dl.下载时间) as 最近下载时间,
-    DATEDIFF(NOW(), MAX(dl.下载时间)) as 距今天数
-FROM 用户 u
-JOIN 角色 r ON u.角色编号 = r.角色编号
-LEFT JOIN 下载日志 dl ON u.用户编号 = dl.用户ID
-LEFT JOIN 生成报表 gr ON dl.报表编号 = gr.报表编号
-WHERE dl.下载时间 >= DATE_SUB(NOW(), INTERVAL 30 DAY)
-GROUP BY u.用户编号, u.真实姓名, r.角色名称
-HAVING 下载次数 > 0
-ORDER BY 下载次数 DESC, 总下载大小_MB DESC;
+    r.区域名称,
+    COUNT(DISTINCT d.设备编号) AS 设备总数,
+    SUM(CASE WHEN ds.运行状态 = '故障' THEN 1 ELSE 0 END) AS 故障次数,
+    COUNT(DISTINCT m.维护编号) AS 维护记录数,
+    SUM(CASE WHEN m.维护类型 = '维修' THEN 1 ELSE 0 END) AS 维修次数,
+    SUM(CASE WHEN m.维护类型 = '更换' THEN 1 ELSE 0 END) AS 更换次数
+FROM 
+    区域 r
+    LEFT JOIN 设备档案 d ON r.区域编号 = d.区域编号
+    LEFT JOIN 设备状态 ds ON d.设备编号 = ds.设备编号
+    LEFT JOIN 维护记录 m ON d.设备编号 = m.设备编号
+WHERE 
+    ds.采集时间 >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)  -- 最近30天
+    OR m.维护时间 >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)
+GROUP BY 
+    r.区域编号, r.区域名称
+ORDER BY 
+    故障次数 DESC;
 
--- 模板审核流程跟踪与效率分析（关联3个表）
-SELECT
-    rt.模板编号,
-    rt.报表名称,
-    rt.创建时间 as 模板创建时间,
-    u1.真实姓名 as 创建人,
-    rt.审核状态,
-    MAX(ol.操作时间) as 最后审核操作时间,
-    MAX(CASE WHEN ol.操作时间 = max_time.最后操作时间 THEN u2.真实姓名 END) as 最后审核人,
-    TIMESTAMPDIFF(HOUR, rt.创建时间, MAX(ol.操作时间)) as 审核耗时_小时,
-    COUNT(DISTINCT gr.报表编号) as 已生成报表数,
-    SUM(gr.下载次数) as 总下载次数
-FROM 报表模板 rt
-JOIN 用户 u1 ON rt.创建人ID = u1.用户编号
-LEFT JOIN 操作日志 ol ON rt.模板编号 = ol.目标ID
-    AND ol.目标表 = '报表模板'
-    AND ol.操作类型 LIKE '%APPROVE%'
-LEFT JOIN 用户 u2 ON ol.用户ID = u2.用户编号
-LEFT JOIN 生成报表 gr ON rt.模板编号 = gr.模板编号
-LEFT JOIN (
-    SELECT 目标ID, MAX(操作时间) as 最后操作时间
-    FROM 操作日志
-    WHERE 目标表 = '报表模板' AND 操作类型 LIKE '%APPROVE%'
-    GROUP BY 目标ID
-) max_time ON rt.模板编号 = max_time.目标ID
-WHERE rt.是否需要审核 = TRUE
-  AND rt.创建时间 >= DATE_SUB(NOW(), INTERVAL 60 DAY)
-GROUP BY rt.模板编号, rt.报表名称, rt.创建时间, u1.真实姓名, rt.审核状态
-ORDER BY 审核耗时_小时 DESC;
+-- 统计各报表模板的生成报表数量、总下载次数及使用率
+SELECT 
+    t.模板编号,
+    t.报表名称,
+    t.生成周期,
+    t.数据来源,
+    COUNT(DISTINCT r.报表编号) AS 已生成报表数,
+    SUM(r.下载次数) AS 总下载次数,
+    AVG(r.下载次数) AS 平均下载次数,
+    COUNT(DISTINCT dl.用户编号) AS 下载用户数,
+    ROUND(SUM(r.下载次数) * 100.0 / NULLIF(COUNT(DISTINCT r.报表编号), 0), 2) AS 报表平均使用率
+FROM 
+    报表模板 t
+    LEFT JOIN 生成报表 r ON t.模板编号 = r.模板编号
+    LEFT JOIN 下载日志 dl ON r.报表编号 = dl.报表编号
+WHERE 
+    t.审核状态 = '通过'
+    AND t.是否生效 = TRUE
+GROUP BY 
+    t.模板编号, t.报表名称, t.生成周期, t.数据来源
+ORDER BY 
+    总下载次数 DESC;
+
+-- 统计各类公众反馈的处理效率
+SELECT 
+    f.反馈类型,
+    COUNT(*) AS 总反馈数,
+    SUM(CASE WHEN f.处理状态 = '已处理' THEN 1 ELSE 0 END) AS 已处理数,
+    SUM(CASE WHEN f.处理状态 = '处理中' THEN 1 ELSE 0 END) AS 处理中数,
+    SUM(CASE WHEN f.处理状态 = '待处理' THEN 1 ELSE 0 END) AS 待处理数,
+    ROUND(100.0 * SUM(CASE WHEN f.处理状态 = '已处理' THEN 1 ELSE 0 END) / COUNT(*), 2) AS 处理完成率,
+    ROUND(AVG(TIMESTAMPDIFF(HOUR, f.提交时间, f.处理时间)), 2) AS 平均处理时长_小时,
+    u.真实姓名 AS 主要处理人,
+    COUNT(DISTINCT f.提交人编号) AS 反馈用户数
+FROM 
+    公众反馈 f
+    LEFT JOIN 用户 u ON f.处理人编号 = u.用户编号
+WHERE 
+    f.提交时间 >= DATE_SUB(CURDATE(), INTERVAL 90 DAY)  -- 最近90天
+GROUP BY 
+    f.反馈类型, u.真实姓名
+ORDER BY 
+    总反馈数 DESC;
+
+-- 综合统计：各区域的监测数据、林草资源、设备情况
+SELECT 
+    r.区域名称,
+    r.区域类型,
+    u.真实姓名 AS 负责人,
+    COUNT(DISTINCT d.设备编号) AS 设备总数,
+    COUNT(DISTINCT s.传感器编号) AS 传感器数,
+    COUNT(DISTINCT md.数据编号) AS 监测数据条数,
+    COUNT(DISTINCT lc.资源编号) AS 林草资源数,
+    SUM(CASE WHEN lc.资源类型 = '树木' THEN lc.数量 ELSE 0 END) AS 树木总数,
+    SUM(CASE WHEN lc.资源类型 = '草地' THEN lc.面积 ELSE 0 END) AS 草地总面积
+FROM 
+    区域 r
+    LEFT JOIN 用户 u ON r.负责人编号 = u.用户编号
+    LEFT JOIN 设备档案 d ON r.区域编号 = d.区域编号
+    LEFT JOIN 传感器 s ON d.设备编号 = s.设备编号
+    LEFT JOIN 监测数据 md ON s.传感器编号 = md.传感器编号
+    LEFT JOIN 林草资源 lc ON r.区域编号 = lc.区域编号
+WHERE 
+    md.数据采集时间 >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)  -- 最近7天
+GROUP BY 
+    r.区域编号, r.区域名称, r.区域类型, u.真实姓名
+ORDER BY 
+    监测数据条数 DESC;
